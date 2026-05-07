@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Camera, Upload, ChevronRight, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react'
-import type { AIIdentification, AICandidate, DisambiguationQuestion } from '../types'
+import type { AIIdentification, AICandidate } from '../types'
 import { supabase } from '../lib/supabase'
 
 type Step = 'upload' | 'analyzing' | 'results' | 'disambiguate' | 'confirmed'
@@ -9,16 +9,33 @@ interface Props {
   onIdentified?: (candidate: AICandidate, imageFile: File) => void
 }
 
-/** Only allow blob: URLs created by this app as image sources */
-function safeBlobUrl(url: string | null): string | undefined {
-  if (!url) return undefined
-  return url.startsWith('blob:') ? url : undefined
+/** Canvas-based image preview that avoids setting img src from user-supplied URLs */
+function ImagePreview({ file, style }: { file: File | null; style?: React.CSSProperties }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    if (!file || !canvasRef.current) return
+    const canvas = canvasRef.current
+    createImageBitmap(file).then(bitmap => {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { bitmap.close(); return }
+      const maxW = canvas.offsetWidth || 390
+      const maxH = canvas.offsetHeight || 300
+      const ratio = Math.min(maxW / bitmap.width, maxH / bitmap.height, 1)
+      canvas.width = Math.round(bitmap.width * ratio)
+      canvas.height = Math.round(bitmap.height * ratio)
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      bitmap.close()
+    }).catch(() => { /* ignore decode errors */ })
+  }, [file])
+
+  if (!file) return null
+  return <canvas ref={canvasRef} style={{ display: 'block', margin: '0 auto', borderRadius: 8, ...style }} />
 }
 
 export default function IdentifyFlow({ onIdentified }: Props) {
   const [step, setStep] = useState<Step>('upload')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [identification, setIdentification] = useState<AIIdentification | null>(null)
   const [selectedCandidate, setSelectedCandidate] = useState<AICandidate | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -28,7 +45,6 @@ export default function IdentifyFlow({ onIdentified }: Props) {
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) { setError('Please select an image file'); return }
     setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
     setError(null)
   }
 
@@ -112,7 +128,6 @@ export default function IdentifyFlow({ onIdentified }: Props) {
   const reset = () => {
     setStep('upload')
     setImageFile(null)
-    setImagePreview(null)
     setIdentification(null)
     setSelectedCandidate(null)
     setAnswers({})
@@ -149,8 +164,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
         onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#7c3aed'; (e.currentTarget as HTMLDivElement).style.background = '#0d0d1a' }}
         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#333'; (e.currentTarget as HTMLDivElement).style.background = '#0a0a0a' }}
       >
-        {imagePreview ? (
-          <img src={safeBlobUrl(imagePreview)} alt="Preview" style={{ maxHeight: 300, maxWidth: '100%', borderRadius: 8, margin: '0 auto', display: 'block' }} />
+        {imageFile ? (
+          <ImagePreview file={imageFile} style={{ maxHeight: 300, maxWidth: '100%' }} />
         ) : (
           <>
             <div style={{ fontSize: 48, marginBottom: 12 }}>💎</div>
@@ -178,7 +193,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
         </button>
       </div>
 
-      {imagePreview && (
+      {imageFile && (
         <button
           onClick={analyze}
           style={{ width: '100%', marginTop: 12, background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', border: 'none', borderRadius: 10, padding: '14px', color: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
@@ -191,7 +206,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
 
   if (step === 'analyzing') return (
     <div style={{ textAlign: 'center', padding: 40 }}>
-      {imagePreview && <img src={safeBlobUrl(imagePreview)} alt="Analyzing" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 8, marginBottom: 24, opacity: 0.6 }} />}
+      {imageFile && <ImagePreview file={imageFile} style={{ maxHeight: 200, maxWidth: '100%', marginBottom: 24, opacity: 0.6 }} />}
       <div style={{ fontSize: 32, marginBottom: 12, animation: 'spin 2s linear infinite' }}>✨</div>
       <div style={{ color: '#f5f5f5', fontWeight: 600, fontSize: 18 }}>Analyzing crystal…</div>
       <div style={{ color: '#525252', fontSize: 14, marginTop: 6 }}>AI vision model is identifying your specimen</div>
@@ -205,8 +220,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
 
   if (step === 'results' && identification) return (
     <div>
-      {imagePreview && (
-        <img src={safeBlobUrl(imagePreview)} alt="Crystal" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }} />
+      {imageFile && (
+        <ImagePreview file={imageFile} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }} />
       )}
       <h3 style={{ margin: '0 0 4px', color: '#f5f5f5', fontSize: 18, fontWeight: 700 }}>Top Identifications</h3>
       <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen</p>

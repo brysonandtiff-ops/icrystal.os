@@ -1,73 +1,130 @@
-# React + TypeScript + Vite
+# iCrystal.OS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> iNaturalist for the mineral world — identify, collect, and map crystal specimens with AI assistance.
 
-Currently, two official plugins are available:
+iCrystal.OS is a browser-native Progressive Web App (PWA) where rockhounds log finds, get AI-assisted mineral identification, and build a personal specimen collection on a shared community map.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features (v1)
 
-## React Compiler
+- **AI Identification Pipeline** — Upload a photo, get top-3 mineral candidates from Claude/GPT-4V, answer 2-3 disambiguation questions, confirm your ID.
+- **Personal Collection** — CRUD specimen records with photos, notes, hardness, streak, locality, and private/public toggle.
+- **Community Map** — MapLibre GL JS map of public finds; location obfuscated to ~10 km by default to protect collecting spots.
+- **Activity Feed** — Latest public finds, follow other collectors, comment on specimens.
+- **PWA** — Installable on iOS/Android/desktop, offline shell cached via service worker.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+| Layer | Choice |
+|-------|--------|
+| Frontend | React 19 + Vite + TypeScript + Tailwind CSS v4 |
+| Map | MapLibre GL JS (open-source) |
+| Backend | Supabase (Postgres + RLS + Auth + Storage + Edge Functions) |
+| AI | Claude Sonnet via Anthropic API / OpenAI GPT-4o (edge function abstraction) |
+| PWA | vite-plugin-pwa + Workbox |
+| Hosting | Vercel (frontend) + Supabase Cloud (backend) |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 1. Clone and install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/brysonandtiff-ops/icrystal.os
+cd icrystal.os
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Configure environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env.local
 ```
+
+Edit `.env.local` and fill in your Supabase project credentials:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+Get these from **Supabase Dashboard → Settings → API**.
+
+### 3. Set up Supabase
+
+Create a new Supabase project, then run the migration:
+
+```bash
+# Using Supabase CLI
+supabase db push
+
+# Or manually paste supabase/migrations/001_initial_schema.sql into the SQL editor
+```
+
+Deploy the identify Edge Function:
+
+```bash
+supabase functions deploy identify
+supabase secrets set OPENAI_API_KEY=sk-...
+# or
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### 4. Run locally
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+### 5. Build for production
+
+```bash
+npm run build
+```
+
+Deploy the `dist/` folder to Vercel (or any static host).
+
+## Database Schema
+
+Eight core tables — all with Row Level Security enforced:
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | User profiles (extends `auth.users`) |
+| `specimens` | Specimen records with obfuscated/precise coordinates |
+| `specimen_photos` | Photo storage references |
+| `ai_identifications` | Full AI identification log |
+| `likes` | Specimen likes |
+| `comments` | Community comments on specimens |
+| `follows` | User follow graph |
+| `notifications` | Activity notifications |
+
+**Location obfuscation**: `specimens.obfuscated_lat/lng` stores a randomised point within `location_precision` km of the true location. RLS ensures only the owner can read the exact coordinates.
+
+## Project Structure
+
+```
+src/
+  pages/          # Route-level pages (Home, Identify, Collection, Map, Profile, Auth)
+  components/     # Shared components (Layout, SpecimenCard, IdentifyFlow)
+  hooks/          # useAuth, etc.
+  lib/            # supabase.ts client
+  types/          # TypeScript types
+supabase/
+  functions/      # Edge Functions (identify/)
+  migrations/     # SQL migrations
+public/
+  icons/          # PWA icons
+  manifest.json   # PWA manifest
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon (public) key |
+
+## License
+
+MIT
