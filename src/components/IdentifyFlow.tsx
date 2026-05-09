@@ -128,6 +128,16 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     onIdentified?.(candidate, imageFile!)
   }
 
+  const showNextSuggestion = () => {
+    if (!identification || identification.top_candidates.length === 0) return
+    const activeCandidate = selectedCandidate ?? identification.top_candidates[0]
+    const activeIndex = identification.top_candidates.findIndex(candidate => candidate === activeCandidate)
+    const nextIndex = activeIndex >= 0
+      ? (activeIndex + 1) % identification.top_candidates.length
+      : 0
+    setSelectedCandidate(identification.top_candidates[nextIndex])
+  }
+
   const reset = () => {
     setStep('upload')
     setImageFile(null)
@@ -221,100 +231,125 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     </div>
   )
 
-  if (step === 'results' && identification) return (
-    <div>
-      {imageFile && (
-        <ImagePreview file={imageFile} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }} />
-      )}
-      <h3 style={{ margin: '0 0 4px', color: '#f5f5f5', fontSize: 18, fontWeight: 700 }}>Top Identifications</h3>
-      <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen</p>
+  if (step === 'results' && identification) {
+    const activeCandidate = selectedCandidate ?? identification.top_candidates[0]
+    const activeCandidateIndex = identification.top_candidates.findIndex(candidate => candidate === activeCandidate)
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-        {identification.top_candidates.map((candidate, i) => (
-          <div
-            key={i}
-            onClick={() => setSelectedCandidate(candidate)}
-            style={{
-              background: selectedCandidate === candidate ? '#0d0d1a' : '#0a0a0a',
-              border: `1px solid ${selectedCandidate === candidate ? '#7c3aed' : '#1a1a1a'}`,
-              borderRadius: 12,
-              padding: '14px 16px',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {i === 0 && <span style={{ fontSize: 16 }}>🥇</span>}
-                <span style={{ fontWeight: 700, color: '#f5f5f5', fontSize: 16 }}>{candidate.mineral_name}</span>
-                <span style={{ fontSize: 12, color: '#525252' }}>{candidate.mineral_group}</span>
-              </div>
-              <span style={{ fontWeight: 700, color: candidate.confidence > 0.7 ? '#10b981' : '#f59e0b', fontSize: 14 }}>
-                {Math.round(candidate.confidence * 100)}%
-              </span>
-            </div>
-            {confidenceBar(candidate.confidence)}
-            <p style={{ margin: '8px 0 8px', color: '#a3a3a3', fontSize: 13, lineHeight: 1.5 }}>{candidate.description}</p>
-            {candidate.distinguishing_features.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {candidate.distinguishing_features.map((f, fi) => (
-                  <span key={fi} style={{ fontSize: 11, background: '#111', border: '1px solid #222', borderRadius: 4, padding: '2px 6px', color: '#a3a3a3' }}>{f}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+    return (
+      <div>
+        {imageFile && (
+          <ImagePreview file={imageFile} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }} />
+        )}
+        <h3 style={{ margin: '0 0 4px', color: '#f5f5f5', fontSize: 18, fontWeight: 700 }}>Top Identifications</h3>
+        <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen or cycle to the next suggestion</p>
 
-      {identification.disambiguation_questions && identification.disambiguation_questions.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <h4 style={{ margin: '0 0 12px', color: '#f5f5f5', fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <AlertTriangle size={16} style={{ color: '#f59e0b' }} /> Help narrow it down
-          </h4>
-          {identification.disambiguation_questions.map(q => (
-            <div key={q.id} style={{ marginBottom: 14 }}>
-              <p style={{ margin: '0 0 8px', color: '#a3a3a3', fontSize: 14 }}>{q.question}</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {q.options.map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => handleAnswer(q.id, opt)}
-                    style={{
-                      background: answers[q.id] === opt ? '#1a1a2e' : '#111',
-                      border: `1px solid ${answers[q.id] === opt ? '#7c3aed' : '#333'}`,
-                      borderRadius: 8,
-                      padding: '6px 12px',
-                      color: answers[q.id] === opt ? '#8b5cf6' : '#a3a3a3',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {opt}
-                  </button>
-                ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+          {identification.top_candidates.map((candidate, i) => (
+            <div
+              key={i}
+              onClick={() => setSelectedCandidate(candidate)}
+              style={{
+                background: activeCandidate === candidate ? '#0d0d1a' : '#0a0a0a',
+                border: `1px solid ${activeCandidate === candidate ? '#7c3aed' : '#1a1a1a'}`,
+                borderRadius: 12,
+                padding: '14px 16px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {i === 0 && <span style={{ fontSize: 16 }}>🥇</span>}
+                  <span style={{ fontWeight: 700, color: '#f5f5f5', fontSize: 16 }}>{candidate.mineral_name}</span>
+                  <span style={{ fontSize: 12, color: '#525252' }}>{candidate.mineral_group}</span>
+                </div>
+                <span style={{ fontWeight: 700, color: candidate.confidence > 0.7 ? '#10b981' : '#f59e0b', fontSize: 14 }}>
+                  {Math.round(candidate.confidence * 100)}%
+                </span>
               </div>
+              {confidenceBar(candidate.confidence)}
+              <p style={{ margin: '8px 0 8px', color: '#a3a3a3', fontSize: 13, lineHeight: 1.5 }}>{candidate.description}</p>
+              {candidate.distinguishing_features.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {candidate.distinguishing_features.map((f, fi) => (
+                    <span key={fi} style={{ fontSize: 11, background: '#111', border: '1px solid #222', borderRadius: 4, padding: '2px 6px', color: '#a3a3a3' }}>{f}</span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
-      )}
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={reset}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', border: '1px solid #333', borderRadius: 10, padding: '12px', color: '#a3a3a3', cursor: 'pointer', fontSize: 14 }}
-        >
-          <RefreshCw size={15} /> Retry
-        </button>
-        <button
-          onClick={() => selectedCandidate ? confirmSelection(selectedCandidate) : confirmSelection(identification.top_candidates[0])}
-          style={{ flex: 2, background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', border: 'none', borderRadius: 10, padding: '12px', color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-        >
-          <CheckCircle size={16} /> Confirm & Save
-        </button>
+        {identification.disambiguation_questions && identification.disambiguation_questions.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={{ margin: '0 0 12px', color: '#f5f5f5', fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={16} style={{ color: '#f59e0b' }} /> Help narrow it down
+            </h4>
+            {identification.disambiguation_questions.map(q => (
+              <div key={q.id} style={{ marginBottom: 14 }}>
+                <p style={{ margin: '0 0 8px', color: '#a3a3a3', fontSize: 14 }}>{q.question}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {q.options.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => handleAnswer(q.id, opt)}
+                      style={{
+                        background: answers[q.id] === opt ? '#1a1a2e' : '#111',
+                        border: `1px solid ${answers[q.id] === opt ? '#7c3aed' : '#333'}`,
+                        borderRadius: 8,
+                        padding: '6px 12px',
+                        color: answers[q.id] === opt ? '#8b5cf6' : '#a3a3a3',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={reset}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', border: '1px solid #333', borderRadius: 10, padding: '12px', color: '#a3a3a3', cursor: 'pointer', fontSize: 14 }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
+          <button
+            onClick={showNextSuggestion}
+            disabled={identification.top_candidates.length < 2}
+            style={{
+              flex: 1.4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              background: '#111',
+              border: '1px solid #333',
+              borderRadius: 10,
+              padding: '12px',
+              color: identification.top_candidates.length < 2 ? '#3f3f46' : '#a3a3a3',
+              cursor: identification.top_candidates.length < 2 ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+            }}
+          >
+            <ChevronRight size={15} /> Next Suggestion {activeCandidateIndex >= 0 ? `(${activeCandidateIndex + 1}/${identification.top_candidates.length})` : ''}
+          </button>
+          <button
+            onClick={() => confirmSelection(activeCandidate)}
+            style={{ flex: 2, background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', border: 'none', borderRadius: 10, padding: '12px', color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          >
+            <CheckCircle size={16} /> Confirm & Save
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   if (step === 'confirmed' && selectedCandidate) return (
     <div style={{ textAlign: 'center', padding: 32 }}>
