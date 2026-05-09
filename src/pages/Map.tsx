@@ -21,6 +21,14 @@ const toFeatureCollection = (points: typeof DEMO_POINTS) => ({
   })),
 })
 
+interface SpecimenSource {
+  setData: (data: ReturnType<typeof toFeatureCollection>) => void
+}
+
+interface MapWithSpecimenSource {
+  getSource: (id: string) => SpecimenSource | undefined
+}
+
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<unknown>(null)
@@ -128,9 +136,7 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    const map = mapRef.current as {
-      getSource: (id: string) => { setData: (data: ReturnType<typeof toFeatureCollection>) => void } | undefined
-    } | null
+    const map = mapRef.current as MapWithSpecimenSource | null
 
     map?.getSource('specimens')?.setData(toFeatureCollection(points))
   }, [points])
