@@ -128,10 +128,16 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     onIdentified?.(candidate, imageFile!)
   }
 
+  const getActiveCandidate = (candidates: AICandidate[]) => selectedCandidate ?? candidates[0]
+
+  const getActiveCandidateIndex = (candidates: AICandidate[]) => {
+    const activeCandidate = getActiveCandidate(candidates)
+    return candidates.findIndex(candidate => candidate === activeCandidate)
+  }
+
   const showNextSuggestion = () => {
     if (!identification || identification.top_candidates.length === 0) return
-    const activeCandidate = selectedCandidate ?? identification.top_candidates[0]
-    const activeIndex = identification.top_candidates.findIndex(candidate => candidate === activeCandidate)
+    const activeIndex = getActiveCandidateIndex(identification.top_candidates)
     const nextIndex = activeIndex >= 0
       ? (activeIndex + 1) % identification.top_candidates.length
       : 0
@@ -232,8 +238,11 @@ export default function IdentifyFlow({ onIdentified }: Props) {
   )
 
   if (step === 'results' && identification) {
-    const activeCandidate = selectedCandidate ?? identification.top_candidates[0]
-    const activeCandidateIndex = identification.top_candidates.findIndex(candidate => candidate === activeCandidate)
+    const activeCandidate = getActiveCandidate(identification.top_candidates)
+    const activeCandidateIndex = getActiveCandidateIndex(identification.top_candidates)
+    const nextSuggestionLabel = activeCandidateIndex >= 0
+      ? `Next Suggestion (${activeCandidateIndex + 1}/${identification.top_candidates.length})`
+      : 'Next Suggestion'
 
     return (
       <div>
@@ -338,7 +347,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
               fontSize: 14,
             }}
           >
-            <ChevronRight size={15} /> Next Suggestion {activeCandidateIndex >= 0 ? `(${activeCandidateIndex + 1}/${identification.top_candidates.length})` : ''}
+            <ChevronRight size={15} /> {nextSuggestionLabel}
           </button>
           <button
             onClick={() => confirmSelection(activeCandidate)}
