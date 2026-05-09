@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { Home, Compass, Camera, BookOpen, User, LogIn } from 'lucide-react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuthContext'
 
 const navItems = [
   { to: '/', icon: Home, label: 'Feed' },
@@ -26,7 +26,7 @@ export default function Layout() {
             {user ? (
               <>
                 <button
-                  onClick={() => navigate(`/profile/${user.email?.split('@')[0]}`)}
+                  onClick={() => navigate('/profile')}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', color: '#a3a3a3' }}
                   title="Profile"
                 >

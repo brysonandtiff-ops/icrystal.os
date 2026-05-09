@@ -4,7 +4,7 @@ import { Heart, MessageCircle, MapPin, Share2, ArrowLeft, Sparkles } from 'lucid
 import { formatDistanceToNow } from 'date-fns'
 import type { Specimen, Comment } from '../types'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuthContext'
 
 const DEMO_SPECIMEN: Specimen = {
   id: '1', user_id: 'u1',
@@ -45,6 +45,7 @@ export default function SpecimenDetail() {
   const [liked, setLiked] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -63,19 +64,47 @@ export default function SpecimenDetail() {
           .eq('specimen_id', id)
           .order('created_at', { ascending: true })
         if (cmts) setComments(cmts as Comment[])
+
+        if (user) {
+          const { data: likeData } = await supabase
+            .from('likes')
+            .select('specimen_id')
+            .match({ specimen_id: id, user_id: user.id })
+            .maybeSingle()
+          setLiked(Boolean(likeData))
+        } else {
+          setLiked(false)
+        }
       } catch { /* use demo */ }
     }
     load()
-  }, [id])
+  }, [id, user])
 
   const handleLike = async () => {
-    setLiked(l => !l)
-    setSpecimen(s => ({ ...s, like_count: s.like_count + (liked ? -1 : 1) }))
+    if (!user) return
+    const nextLiked = !liked
+    setLiked(nextLiked)
+    setSpecimen(s => ({ ...s, like_count: Math.max(0, s.like_count + (nextLiked ? 1 : -1)) }))
+
+    try {
+      if (nextLiked) {
+        const { error } = await supabase.from('likes').insert({ specimen_id: specimen.id, user_id: user.id })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('likes').delete().match({ specimen_id: specimen.id, user_id: user.id })
+        if (error) throw error
+      }
+    } catch (err) {
+      console.error('Like failed:', err)
+      setLiked(!nextLiked)
+      setSpecimen(s => ({ ...s, like_count: Math.max(0, s.like_count + (nextLiked ? -1 : 1)) }))
+    }
   }
 
   const handleComment = async () => {
     if (!commentText.trim() || !user) return
     setSubmitting(true)
+    setCommentError(null)
     const newComment: Comment = {
       id: `temp-${Date.now()}`,
       specimen_id: specimen.id,
@@ -87,10 +116,12 @@ export default function SpecimenDetail() {
     try {
       const { data } = await supabase.from('comments').insert({ specimen_id: specimen.id, user_id: user.id, body: commentText }).select('*, user:profiles(id,username,display_name,avatar_url)').single()
       setComments(c => [...c, (data as Comment) ?? newComment])
-    } catch {
-      setComments(c => [...c, newComment])
+      setCommentError(null)
+      setCommentText('')
+    } catch (err) {
+      console.error('Comment failed:', err)
+      setCommentError(err instanceof Error ? err.message : 'Unable to post comment right now.')
     }
-    setCommentText('')
     setSubmitting(false)
   }
 
@@ -218,23 +249,26 @@ export default function SpecimenDetail() {
         </div>
 
         {user ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              id="comment-input"
-              type="text"
-              placeholder="Add a comment…"
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleComment()}
-              style={{ flex: 1, background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none' }}
-            />
-            <button
-              onClick={handleComment}
-              disabled={submitting || !commentText.trim()}
-              style={{ background: '#7c3aed', border: 'none', borderRadius: 8, padding: '10px 16px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14, opacity: submitting || !commentText.trim() ? 0.5 : 1 }}
-            >
-              Post
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                id="comment-input"
+                type="text"
+                placeholder="Add a comment…"
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleComment()}
+                style={{ flex: 1, background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none' }}
+              />
+              <button
+                onClick={handleComment}
+                disabled={submitting || !commentText.trim()}
+                style={{ background: '#7c3aed', border: 'none', borderRadius: 8, padding: '10px 16px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14, opacity: submitting || !commentText.trim() ? 0.5 : 1 }}
+              >
+                Post
+              </button>
+            </div>
+            {commentError && <div style={{ color: '#ef4444', fontSize: 13 }}>{commentError}</div>}
           </div>
         ) : (
           <Link to="/login" style={{ display: 'block', textAlign: 'center', padding: '12px', background: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: 10, color: '#7c3aed', textDecoration: 'none', fontSize: 14 }}>

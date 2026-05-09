@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, MapPin, FileText, Save } from 'lucide-react'
 import IdentifyFlow from '../components/IdentifyFlow'
 import type { AICandidate } from '../types'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { getPublicUrl, supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuthContext'
 
 type SaveStep = 'identify' | 'details' | 'saved'
 
@@ -15,6 +15,7 @@ export default function Identify() {
   const [identifiedCandidate, setIdentifiedCandidate] = useState<AICandidate | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     mineral_name: '',
     variety: '',
@@ -27,36 +28,50 @@ export default function Identify() {
   const handleIdentified = (candidate: AICandidate, file: File) => {
     setIdentifiedCandidate(candidate)
     setImageFile(file)
-    setForm(prev => ({ ...prev, mineral_name: candidate.mineral_name }))
+    setSaveError(null)
+    setForm({
+      mineral_name: candidate.mineral_name,
+      variety: '',
+      locality: '',
+      locality_country: '',
+      description: '',
+      is_public: true,
+    })
     setSaveStep('details')
   }
 
   const handleSave = async () => {
     if (!user || !identifiedCandidate) return
+    const mineralName = form.mineral_name.trim() || identifiedCandidate.mineral_name
+    if (!mineralName.trim()) {
+      setSaveError('Add a mineral name before saving your specimen.')
+      return
+    }
+
     setSaving(true)
+    setSaveError(null)
     try {
-      let photoUrl = ''
+      let photoPath = ''
       if (imageFile) {
         const ext = imageFile.name.split('.').pop() ?? 'jpg'
         const path = `${user.id}/${Date.now()}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('specimen-photos')
           .upload(path, imageFile)
-        if (!uploadError) {
-          photoUrl = supabase.storage.from('specimen-photos').getPublicUrl(path).data.publicUrl
-        }
+        if (uploadError) throw uploadError
+        photoPath = path
       }
 
       const { data: specimen, error } = await supabase
         .from('specimens')
         .insert({
           user_id: user.id,
-          mineral_name: form.mineral_name || identifiedCandidate.mineral_name,
+          mineral_name: mineralName,
           mineral_group: identifiedCandidate.mineral_group,
-          variety: form.variety || null,
-          locality: form.locality || null,
-          locality_country: form.locality_country || null,
-          description: form.description || identifiedCandidate.description,
+          variety: form.variety.trim() || null,
+          locality: form.locality.trim() || null,
+          locality_country: form.locality_country.trim() || null,
+          description: form.description.trim() || identifiedCandidate.description,
           is_public: form.is_public,
           ai_identified: true,
           quality_grade: 'community',
@@ -67,21 +82,21 @@ export default function Identify() {
 
       if (error) throw error
 
-      if (photoUrl && specimen) {
-        await supabase.from('specimen_photos').insert({
+      if (photoPath && specimen) {
+        const { error: photoError } = await supabase.from('specimen_photos').insert({
           specimen_id: specimen.id,
-          storage_path: photoUrl,
-          url: photoUrl,
+          storage_path: photoPath,
+          url: getPublicUrl(photoPath),
           is_primary: true,
         })
+        if (photoError) throw photoError
       }
 
       setSaveStep('saved')
       setTimeout(() => navigate('/collection'), 1500)
     } catch (err) {
       console.error('Save failed:', err)
-      setSaveStep('saved') // show success anyway in demo
-      setTimeout(() => navigate('/collection'), 1500)
+      setSaveError(err instanceof Error ? err.message : 'We could not save your specimen. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -146,7 +161,10 @@ export default function Identify() {
                   type="text"
                   placeholder={placeholder}
                   value={form[key as keyof typeof form] as string}
-                  onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+                  onChange={e => {
+                    setSaveError(null)
+                    setForm(prev => ({ ...prev, [key]: e.target.value }))
+                  }}
                   style={{ width: '100%', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
@@ -159,7 +177,10 @@ export default function Identify() {
               <textarea
                 placeholder="Additional notes about this specimen…"
                 value={form.description}
-                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={e => {
+                  setSaveError(null)
+                  setForm(prev => ({ ...prev, description: e.target.value }))
+                }}
                 rows={3}
                 style={{ width: '100%', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
               />
@@ -171,7 +192,10 @@ export default function Identify() {
                 <div style={{ color: '#525252', fontSize: 12 }}>Share with community</div>
               </div>
               <button
-                onClick={() => setForm(prev => ({ ...prev, is_public: !prev.is_public }))}
+                onClick={() => {
+                  setSaveError(null)
+                  setForm(prev => ({ ...prev, is_public: !prev.is_public }))
+                }}
                 style={{
                   width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
                   background: form.is_public ? '#7c3aed' : '#333',
@@ -191,6 +215,12 @@ export default function Identify() {
               <MapPin size={16} style={{ color: '#525252' }} />
               <span style={{ fontSize: 13, color: '#525252' }}>Location obfuscated to ~10km radius for privacy</span>
             </div>
+
+            {saveError && (
+              <div style={{ padding: '10px 12px', background: '#1a0a0a', border: '1px solid #4a1a1a', borderRadius: 8, color: '#ef4444', fontSize: 13 }}>
+                {saveError}
+              </div>
+            )}
 
             <button
               onClick={handleSave}

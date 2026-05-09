@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import SpecimenCard from '../components/SpecimenCard'
 import type { User, Specimen } from '../types'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuthContext'
 
 const DEMO_USER: User = {
   id: 'u1', email: 'crystalhunter@example.com', username: 'crystalhunter',
@@ -27,41 +27,56 @@ export default function Profile() {
 
   useEffect(() => {
     const load = async () => {
-      if (!username) return
+      if (!username && !authUser) return
       setLoading(true)
       try {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('username', username)
-          .single()
+        const profileQuery = supabase.from('profiles').select('*')
+        const { data: profileData } = username
+          ? await profileQuery.eq('username', username).single()
+          : await profileQuery.eq('id', authUser!.id).single()
+
         if (profileData) setProfile(profileData as User)
 
         const { data: specimenData } = await supabase
           .from('specimens')
           .select('*, photos:specimen_photos(*)')
           .eq('user_id', profileData?.id ?? '')
-          .eq('is_public', true)
+            .eq('is_public', true)
           .order('created_at', { ascending: false })
           .limit(20)
         if (specimenData) setSpecimens(specimenData as Specimen[])
+
+        if (authUser && profileData?.id && profileData.id !== authUser.id) {
+          const { data: followData } = await supabase
+            .from('follows')
+            .select('following_id')
+            .match({ follower_id: authUser.id, following_id: profileData.id })
+            .maybeSingle()
+          setIsFollowing(Boolean(followData))
+        } else {
+          setIsFollowing(false)
+        }
       } catch { /* use demo */ }
       finally { setLoading(false) }
     }
     load()
-  }, [username])
+  }, [username, authUser])
 
   const handleFollow = async () => {
     if (!authUser) return
-    setIsFollowing(f => !f)
-    setProfile(p => ({ ...p, follower_count: p.follower_count + (isFollowing ? -1 : 1) }))
+    const nextIsFollowing = !isFollowing
+    setIsFollowing(nextIsFollowing)
+    setProfile(p => ({ ...p, follower_count: Math.max(0, p.follower_count + (nextIsFollowing ? 1 : -1)) }))
     try {
-      if (isFollowing) {
-        await supabase.from('follows').delete().match({ follower_id: authUser.id, following_id: profile.id })
-      } else {
+      if (nextIsFollowing) {
         await supabase.from('follows').insert({ follower_id: authUser.id, following_id: profile.id })
+      } else {
+        await supabase.from('follows').delete().match({ follower_id: authUser.id, following_id: profile.id })
       }
-    } catch { /* revert */ }
+    } catch {
+      setIsFollowing(!nextIsFollowing)
+      setProfile(p => ({ ...p, follower_count: Math.max(0, p.follower_count + (nextIsFollowing ? -1 : 1)) }))
+    }
   }
 
   const initials = (profile.display_name ?? profile.username).split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)

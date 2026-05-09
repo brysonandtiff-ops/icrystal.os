@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import SpecimenCard from '../components/SpecimenCard'
 import type { Specimen } from '../types'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuthContext'
 
 const DEMO: Specimen[] = [
   {
