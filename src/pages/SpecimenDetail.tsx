@@ -116,6 +116,7 @@ export default function SpecimenDetail() {
     try {
       const { data } = await supabase.from('comments').insert({ specimen_id: specimen.id, user_id: user.id, body: commentText }).select('*, user:profiles(id,username,display_name,avatar_url)').single()
       setComments(c => [...c, (data as Comment) ?? newComment])
+      setCommentError(null)
       setCommentText('')
     } catch (err) {
       console.error('Comment failed:', err)

@@ -161,7 +161,10 @@ export default function Identify() {
                   type="text"
                   placeholder={placeholder}
                   value={form[key as keyof typeof form] as string}
-                  onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+                  onChange={e => {
+                    setSaveError(null)
+                    setForm(prev => ({ ...prev, [key]: e.target.value }))
+                  }}
                   style={{ width: '100%', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
@@ -174,7 +177,10 @@ export default function Identify() {
               <textarea
                 placeholder="Additional notes about this specimen…"
                 value={form.description}
-                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={e => {
+                  setSaveError(null)
+                  setForm(prev => ({ ...prev, description: e.target.value }))
+                }}
                 rows={3}
                 style={{ width: '100%', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: '10px 12px', color: '#f5f5f5', fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
               />
@@ -186,7 +192,10 @@ export default function Identify() {
                 <div style={{ color: '#525252', fontSize: 12 }}>Share with community</div>
               </div>
               <button
-                onClick={() => setForm(prev => ({ ...prev, is_public: !prev.is_public }))}
+                onClick={() => {
+                  setSaveError(null)
+                  setForm(prev => ({ ...prev, is_public: !prev.is_public }))
+                }}
                 style={{
                   width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
                   background: form.is_public ? '#7c3aed' : '#333',
