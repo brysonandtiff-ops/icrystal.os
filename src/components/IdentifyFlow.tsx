@@ -128,11 +128,15 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     onIdentified?.(candidate, imageFile!)
   }
 
+  const isSameCandidate = (candidate: AICandidate, otherCandidate: AICandidate) =>
+    candidate.mineral_name === otherCandidate.mineral_name &&
+    candidate.mineral_group === otherCandidate.mineral_group
+
   const getActiveCandidate = (candidates: AICandidate[]) => selectedCandidate ?? candidates[0]
 
   const getActiveCandidateIndex = (candidates: AICandidate[]) => {
     const activeCandidate = getActiveCandidate(candidates)
-    return candidates.findIndex(candidate => candidate === activeCandidate)
+    return candidates.findIndex(candidate => isSameCandidate(candidate, activeCandidate))
   }
 
   const showNextSuggestion = () => {
@@ -258,8 +262,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
               key={i}
               onClick={() => setSelectedCandidate(candidate)}
               style={{
-                background: activeCandidate === candidate ? '#0d0d1a' : '#0a0a0a',
-                border: `1px solid ${activeCandidate === candidate ? '#7c3aed' : '#1a1a1a'}`,
+                background: isSameCandidate(activeCandidate, candidate) ? '#0d0d1a' : '#0a0a0a',
+                border: `1px solid ${isSameCandidate(activeCandidate, candidate) ? '#7c3aed' : '#1a1a1a'}`,
                 borderRadius: 12,
                 padding: '14px 16px',
                 cursor: 'pointer',
