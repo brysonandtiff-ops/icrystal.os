@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Compass, Layers } from 'lucide-react'
-import type { Specimen } from '../types'
 import { supabase } from '../lib/supabase'
 
 const DEMO_POINTS = [
@@ -12,6 +11,15 @@ const DEMO_POINTS = [
   { id: '6', lat: 35.7, lng: 139.7, mineral_name: 'Jade', locality: 'Tokyo, Japan' },
   { id: '7', lat: -33.9, lng: 18.4, mineral_name: 'Tiger\'s Eye', locality: 'Cape Town, South Africa' },
 ]
+
+const toFeatureCollection = (points: typeof DEMO_POINTS) => ({
+  type: 'FeatureCollection' as const,
+  features: points.map((point) => ({
+    type: 'Feature' as const,
+    geometry: { type: 'Point' as const, coordinates: [point.lng, point.lat] },
+    properties: { id: point.id, mineral_name: point.mineral_name, locality: point.locality },
+  })),
+})
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -62,14 +70,7 @@ export default function MapPage() {
           // Add source
           map.addSource('specimens', {
             type: 'geojson',
-            data: {
-              type: 'FeatureCollection',
-              features: points.map(p => ({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-                properties: { id: p.id, mineral_name: p.mineral_name, locality: p.locality },
-              })),
-            },
+            data: toFeatureCollection(DEMO_POINTS),
           })
 
           // Cluster layer
@@ -102,6 +103,7 @@ export default function MapPage() {
             .select('id, mineral_name, locality, obfuscated_lat, obfuscated_lng')
             .eq('is_public', true)
             .not('obfuscated_lat', 'is', null)
+            .not('obfuscated_lng', 'is', null)
             .limit(200)
           if (data && data.length > 0) {
             setPoints(data.map(s => ({ id: s.id, lat: s.obfuscated_lat, lng: s.obfuscated_lng, mineral_name: s.mineral_name, locality: s.locality ?? '' })))
@@ -124,6 +126,14 @@ export default function MapPage() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapRef.current as {
+      getSource: (id: string) => { setData: (data: ReturnType<typeof toFeatureCollection>) => void } | undefined
+    } | null
+
+    map?.getSource('specimens')?.setData(toFeatureCollection(points))
+  }, [points])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

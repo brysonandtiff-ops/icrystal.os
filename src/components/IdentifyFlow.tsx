@@ -4,6 +4,7 @@ import type { AIIdentification, AICandidate } from '../types'
 import { supabase } from '../lib/supabase'
 
 type Step = 'upload' | 'analyzing' | 'results' | 'disambiguate' | 'confirmed'
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 interface Props {
   onIdentified?: (candidate: AICandidate, imageFile: File) => void
@@ -44,6 +45,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) { setError('Please select an image file'); return }
+    if (file.size > MAX_IMAGE_BYTES) { setError('Please choose an image smaller than 10 MB'); return }
     setImageFile(file)
     setError(null)
   }
@@ -74,7 +76,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
       if (fnError) throw new Error(fnError.message)
       setIdentification(data as AIIdentification)
       setStep('results')
-    } catch (err) {
+    } catch {
       // Fallback demo data when function not available
       const demo: AIIdentification = {
         confidence: 0.88,
