@@ -257,40 +257,44 @@ export default function IdentifyFlow({ onIdentified }: Props) {
         <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen or cycle to the next suggestion</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-          {identification.top_candidates.map((candidate, i) => (
-            <div
-              key={i}
-              onClick={() => setSelectedCandidate(candidate)}
-              style={{
-                background: isSameCandidate(activeCandidate, candidate) ? '#0d0d1a' : '#0a0a0a',
-                border: `1px solid ${isSameCandidate(activeCandidate, candidate) ? '#7c3aed' : '#1a1a1a'}`,
-                borderRadius: 12,
-                padding: '14px 16px',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {i === 0 && <span style={{ fontSize: 16 }}>🥇</span>}
-                  <span style={{ fontWeight: 700, color: '#f5f5f5', fontSize: 16 }}>{candidate.mineral_name}</span>
-                  <span style={{ fontSize: 12, color: '#525252' }}>{candidate.mineral_group}</span>
+          {identification.top_candidates.map((candidate, i) => {
+            const isActiveCandidate = isSameCandidate(activeCandidate, candidate)
+
+            return (
+              <div
+                key={i}
+                onClick={() => setSelectedCandidate(candidate)}
+                style={{
+                  background: isActiveCandidate ? '#0d0d1a' : '#0a0a0a',
+                  border: `1px solid ${isActiveCandidate ? '#7c3aed' : '#1a1a1a'}`,
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {i === 0 && <span style={{ fontSize: 16 }}>🥇</span>}
+                    <span style={{ fontWeight: 700, color: '#f5f5f5', fontSize: 16 }}>{candidate.mineral_name}</span>
+                    <span style={{ fontSize: 12, color: '#525252' }}>{candidate.mineral_group}</span>
+                  </div>
+                  <span style={{ fontWeight: 700, color: candidate.confidence > 0.7 ? '#10b981' : '#f59e0b', fontSize: 14 }}>
+                    {Math.round(candidate.confidence * 100)}%
+                  </span>
                 </div>
-                <span style={{ fontWeight: 700, color: candidate.confidence > 0.7 ? '#10b981' : '#f59e0b', fontSize: 14 }}>
-                  {Math.round(candidate.confidence * 100)}%
-                </span>
+                {confidenceBar(candidate.confidence)}
+                <p style={{ margin: '8px 0 8px', color: '#a3a3a3', fontSize: 13, lineHeight: 1.5 }}>{candidate.description}</p>
+                {candidate.distinguishing_features.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {candidate.distinguishing_features.map((f, fi) => (
+                      <span key={fi} style={{ fontSize: 11, background: '#111', border: '1px solid #222', borderRadius: 4, padding: '2px 6px', color: '#a3a3a3' }}>{f}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-              {confidenceBar(candidate.confidence)}
-              <p style={{ margin: '8px 0 8px', color: '#a3a3a3', fontSize: 13, lineHeight: 1.5 }}>{candidate.description}</p>
-              {candidate.distinguishing_features.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {candidate.distinguishing_features.map((f, fi) => (
-                    <span key={fi} style={{ fontSize: 11, background: '#111', border: '1px solid #222', borderRadius: 4, padding: '2px 6px', color: '#a3a3a3' }}>{f}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {identification.disambiguation_questions && identification.disambiguation_questions.length > 0 && (
@@ -336,6 +340,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
           <button
             onClick={showNextSuggestion}
             disabled={identification.top_candidates.length < 2}
+            aria-label={identification.top_candidates.length < 2 ? 'Next suggestion unavailable because only one candidate was returned' : nextSuggestionLabel}
+            title={identification.top_candidates.length < 2 ? 'Need at least two suggestions to cycle through results' : 'Show the next identification suggestion'}
             style={{
               flex: 1.4,
               display: 'flex',
