@@ -76,7 +76,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
       if (fnError) throw new Error(fnError.message)
       setIdentification(data as AIIdentification)
       setStep('results')
-    } catch {
+    } catch (err) {
+      console.error('Identification failed:', err)
       // Fallback demo data when function not available
       const demo: AIIdentification = {
         confidence: 0.88,

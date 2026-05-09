@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Compass, Layers } from 'lucide-react'
+import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import { supabase } from '../lib/supabase'
 
 const DEMO_POINTS = [
@@ -21,17 +22,9 @@ const toFeatureCollection = (points: typeof DEMO_POINTS) => ({
   })),
 })
 
-interface SpecimenSource {
-  setData: (data: ReturnType<typeof toFeatureCollection>) => void
-}
-
-interface MapWithSpecimenSource {
-  getSource: (id: string) => SpecimenSource | undefined
-}
-
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<unknown>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<typeof DEMO_POINTS[0] | null>(null)
   const [points, setPoints] = useState(DEMO_POINTS)
@@ -136,9 +129,8 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    const map = mapRef.current as MapWithSpecimenSource | null
-
-    map?.getSource('specimens')?.setData(toFeatureCollection(points))
+    const source = mapRef.current?.getSource('specimens') as GeoJSONSource | undefined
+    source?.setData(toFeatureCollection(points))
   }, [points])
 
   return (
