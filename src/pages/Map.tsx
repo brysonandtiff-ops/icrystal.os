@@ -138,7 +138,6 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    pointsRef.current = points
     const source = mapRef.current?.getSource('specimens') as GeoJSONSource | undefined
     source?.setData(toFeatureCollection(points))
   }, [points])
