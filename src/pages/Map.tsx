@@ -25,6 +25,7 @@ const toFeatureCollection = (points: typeof DEMO_POINTS) => ({
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const pointsRef = useRef(DEMO_POINTS)
   const [mapError, setMapError] = useState<string | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<typeof DEMO_POINTS[0] | null>(null)
   const [points, setPoints] = useState(DEMO_POINTS)
@@ -71,7 +72,7 @@ export default function MapPage() {
           // Add source
           map.addSource('specimens', {
             type: 'geojson',
-            data: toFeatureCollection(DEMO_POINTS),
+            data: toFeatureCollection(pointsRef.current),
           })
 
           // Cluster layer
@@ -107,7 +108,15 @@ export default function MapPage() {
             .not('obfuscated_lng', 'is', null)
             .limit(200)
           if (data && data.length > 0) {
-            setPoints(data.map(s => ({ id: s.id, lat: s.obfuscated_lat, lng: s.obfuscated_lng, mineral_name: s.mineral_name, locality: s.locality ?? '' })))
+            const nextPoints = data.map(s => ({
+              id: s.id,
+              lat: s.obfuscated_lat,
+              lng: s.obfuscated_lng,
+              mineral_name: s.mineral_name,
+              locality: s.locality ?? '',
+            }))
+            pointsRef.current = nextPoints
+            setPoints(nextPoints)
           }
         } catch { /* use demo */ }
 
@@ -129,6 +138,7 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
+    pointsRef.current = points
     const source = mapRef.current?.getSource('specimens') as GeoJSONSource | undefined
     source?.setData(toFeatureCollection(points))
   }, [points])
