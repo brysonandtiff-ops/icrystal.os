@@ -131,12 +131,14 @@ export default function IdentifyFlow({ onIdentified }: Props) {
 
   const isSameCandidate = (candidate: AICandidate, otherCandidate: AICandidate) =>
     candidate.mineral_name === otherCandidate.mineral_name &&
-    candidate.mineral_group === otherCandidate.mineral_group
+    candidate.mineral_group === otherCandidate.mineral_group &&
+    candidate.confidence === otherCandidate.confidence &&
+    candidate.description === otherCandidate.description
 
-  const getActiveCandidate = (candidates: AICandidate[]) => selectedCandidate ?? candidates[0]
+  const getActiveCandidateOrDefault = (candidates: AICandidate[]) => selectedCandidate ?? candidates[0]
 
   const getActiveCandidateIndex = (candidates: AICandidate[]) => {
-    const activeCandidate = getActiveCandidate(candidates)
+    const activeCandidate = getActiveCandidateOrDefault(candidates)
     if (!activeCandidate) return -1
     return candidates.findIndex(candidate => isSameCandidate(candidate, activeCandidate))
   }
@@ -244,7 +246,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
   )
 
   if (step === 'results' && identification) {
-    const activeCandidate = getActiveCandidate(identification.top_candidates)
+    const activeCandidate = getActiveCandidateOrDefault(identification.top_candidates)
     const activeCandidateIndex = getActiveCandidateIndex(identification.top_candidates)
     const nextSuggestionLabel = activeCandidateIndex >= 0
       ? `Next Suggestion (${activeCandidateIndex + 1}/${identification.top_candidates.length})`
@@ -272,7 +274,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
           <ImagePreview file={imageFile} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }} />
         )}
         <h3 style={{ margin: '0 0 4px', color: '#f5f5f5', fontSize: 18, fontWeight: 700 }}>Top Identifications</h3>
-        <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen or cycle through the suggestions</p>
+        <p style={{ margin: '0 0 16px', color: '#525252', fontSize: 13 }}>Select the best match for your specimen, or use Next Suggestion to cycle through options</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
           {identification.top_candidates.map((candidate, i) => {
