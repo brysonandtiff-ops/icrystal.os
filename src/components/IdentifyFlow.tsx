@@ -122,7 +122,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     setAnswers(prev => ({ ...prev, [questionId]: answer }))
   }
 
-  const confirmSelection = (candidate: AICandidate) => {
+  const confirmSelection = (candidate: AICandidate | undefined) => {
+    if (!candidate) return
     setSelectedCandidate(candidate)
     setStep('confirmed')
     onIdentified?.(candidate, imageFile!)
@@ -136,6 +137,7 @@ export default function IdentifyFlow({ onIdentified }: Props) {
 
   const getActiveCandidateIndex = (candidates: AICandidate[]) => {
     const activeCandidate = getActiveCandidate(candidates)
+    if (!activeCandidate) return -1
     return candidates.findIndex(candidate => isSameCandidate(candidate, activeCandidate))
   }
 
@@ -247,6 +249,22 @@ export default function IdentifyFlow({ onIdentified }: Props) {
     const nextSuggestionLabel = activeCandidateIndex >= 0
       ? `Next Suggestion (${activeCandidateIndex + 1}/${identification.top_candidates.length})`
       : 'Next Suggestion'
+
+    if (!activeCandidate) {
+      return (
+        <div style={{ textAlign: 'center', padding: 32 }}>
+          <AlertTriangle size={40} style={{ color: '#f59e0b', margin: '0 auto 16px', display: 'block' }} />
+          <h3 style={{ margin: '0 0 8px', color: '#f5f5f5', fontSize: 20, fontWeight: 700 }}>No suggestions returned</h3>
+          <p style={{ margin: '0 0 20px', color: '#a3a3a3', fontSize: 14 }}>Try another photo to get a new set of identification results.</p>
+          <button
+            onClick={reset}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', border: '1px solid #333', borderRadius: 10, padding: '12px 16px', color: '#a3a3a3', cursor: 'pointer', fontSize: 14 }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
+        </div>
+      )
+    }
 
     return (
       <div>
@@ -361,6 +379,8 @@ export default function IdentifyFlow({ onIdentified }: Props) {
           </button>
           <button
             onClick={() => confirmSelection(activeCandidate)}
+            disabled={!activeCandidate}
+            aria-label={!activeCandidate ? 'Confirm unavailable because no suggestion is selected' : `Confirm ${activeCandidate.mineral_name}`}
             style={{ flex: 2, background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', border: 'none', borderRadius: 10, padding: '12px', color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
             <CheckCircle size={16} /> Confirm & Save
