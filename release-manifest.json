@@ -1,0 +1,37 @@
+{
+  "product": "iCrystal.OS",
+  "repository": "brysonandtiff-ops/icrystal.os",
+  "releaseSha": null,
+  "stage": "prototype",
+  "coreFlow": "Upload a mineral photo, review AI-assisted candidates, confirm the specimen, save it to a collection and optionally share an obfuscated public location.",
+  "commands": {
+    "install": "npm install",
+    "verify": "npm run build",
+    "build": "npm run build"
+  },
+  "deployment": {
+    "provider": "Vercel and Supabase",
+    "status": "not-configured",
+    "evidence": null
+  },
+  "evidence": {
+    "typecheck": "not-run",
+    "lint": "not-run",
+    "unit": "not-run",
+    "e2e": "not-run",
+    "security": "not-run",
+    "realDevice": "not-run",
+    "humanAcceptance": "not-run"
+  },
+  "truth": {
+    "usesMockData": true,
+    "hasSimulatedFlows": true,
+    "knownLimitations": [
+      "The identify Edge Function and model provider require live deployment and cost controls.",
+      "RLS and exact-coordinate privacy require execution proof, not schema review alone.",
+      "AI mineral candidates are assistance and require user confirmation."
+    ]
+  },
+  "nextMilestone": "Prove one safe identify-to-collection-to-obfuscated-map journey with RLS, storage and deletion evidence.",
+  "updatedAt": "2026-07-17T10:29:00+08:00"
+}
