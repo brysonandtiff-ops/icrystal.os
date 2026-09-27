@@ -21,7 +21,7 @@ iCrystal.OS is a browser-native Progressive Web App (PWA) where rockhounds log f
 | Backend | Supabase (Postgres + RLS + Auth + Storage + Edge Functions) |
 | AI | Claude Sonnet via Anthropic API / OpenAI GPT-4o (edge function abstraction) |
 | PWA | vite-plugin-pwa + Workbox |
-| Hosting | Vercel (frontend) + Supabase Cloud (backend) |
+| Hosting | Static frontend hosting + Supabase Cloud backend; current production host must be verified separately |
 
 ## Getting Started
 
@@ -82,7 +82,7 @@ Open [http://localhost:5173](http://localhost:5173).
 npm run build
 ```
 
-Deploy the `dist/` folder to Vercel (or any static host).
+Deploy the `dist/` folder to your approved static host. A configured host is not proof of a current live deployment; verify the deployed artifact separately.
 
 ## Database Schema
 
